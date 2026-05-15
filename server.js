@@ -14,7 +14,7 @@ const upload = multer({ dest: "uploads/" });
 
 const API_KEY = process.env.GOOGLE_API_KEY;
 
-// 🌍 Google Places
+// 🌍 Google Places API
 async function searchPlace(query) {
   try {
     const url = "https://maps.googleapis.com/maps/api/place/textsearch/json";
@@ -44,21 +44,16 @@ async function searchPlace(query) {
   }
 }
 
-// 🚀 Upload API
+// 🚀 UPLOAD API (SMART SUPPORT SEARCH)
 app.post("/upload", upload.single("image"), (req, res) => {
-
-  if (!req.file) {
-    return res.status(400).json({ error: "No file uploaded" });
-  }
 
   const imgPath = path.join(__dirname, req.file.path);
 
-  // ⚡ FAST + STABLE EXEC
-  exec(`python3 ai/detect.py ${imgPath}`, { timeout: 30000 }, async (err, stdout) => {
+  exec(`python3 ai/detect.py ${imgPath}`, { timeout: 60000 }, async (err, stdout) => {
 
     if (err) {
       return res.status(500).json({
-        error: "Python error",
+        error: "Python failed",
         details: err.message
       });
     }
@@ -73,13 +68,24 @@ app.post("/upload", upload.single("image"), (req, res) => {
       });
     }
 
-    let query = (ai.text || []).join(" ").trim();
+    let text = (ai.text || []).join(" ").trim();
+
+    // 🧠 SUPPORT SEARCH MODE
+    let query = text;
 
     if (!query) {
-      return res.json({
-        ai_text: [],
-        message: "No text detected"
-      });
+      query = "famous place in Phnom Penh";
+    }
+
+    // 🧠 SMART DETECTION RULES
+    const lower = query.toLowerCase();
+
+    if (lower.includes("mall")) {
+      query = "shopping mall";
+    } else if (lower.includes("restaurant")) {
+      query = "restaurant";
+    } else if (lower.includes("hotel")) {
+      query = "hotel";
     }
 
     let place = await searchPlace(query);
@@ -87,6 +93,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
     if (place) {
       return res.json({
         ai_text: ai.text,
+        search_query: query,
         place: place.place,
         address: place.address,
         lat: place.lat,
@@ -96,6 +103,7 @@ app.post("/upload", upload.single("image"), (req, res) => {
 
     return res.json({
       ai_text: ai.text,
+      search_query: query,
       message: "No location found"
     });
   });
