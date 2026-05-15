@@ -1,4 +1,4 @@
-easyocr
 pillow
+easyocr
 numpy
 opencv-python
