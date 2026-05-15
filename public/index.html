@@ -2,50 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Map Lens BEST</title>
+<title>AI Auto Lens FREE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body{
-  margin:0;
-  font-family: Arial;
-  background:#0f172a;
-  color:white;
-}
-
-.container{
-  max-width:900px;
-  margin:auto;
-  padding:20px;
-}
-
-.card{
-  background:#1e293b;
-  padding:15px;
-  border-radius:12px;
-  margin-top:10px;
-}
-
-#map{
-  height:500px;
-  margin-top:15px;
-  border-radius:12px;
-}
-
-button{
-  padding:10px 20px;
-  border:none;
-  border-radius:10px;
-  cursor:pointer;
-  background:#38bdf8;
-  color:black;
-  font-weight:bold;
-}
-
-button:hover{
-  background:#0ea5e9;
-}
+body { font-family: Arial; background:#0f172a; color:white; }
+.container { max-width:900px; margin:auto; padding:20px; }
+#map { height:500px; margin-top:10px; border-radius:10px; }
+.card { background:#1e293b; padding:10px; border-radius:10px; }
+button { padding:10px; border-radius:8px; }
 </style>
 </head>
 
@@ -53,13 +19,13 @@ button:hover{
 
 <div class="container">
 
-<h1>📍 AI Map Lens BEST</h1>
+<h2>📍 AI AUTO PIN LENS (FREE)</h2>
 
 <input type="file" id="img">
 <button onclick="scan()">Scan Image</button>
 
 <div class="card">
-<pre id="out">Result will show here...</pre>
+<pre id="out">Result...</pre>
 </div>
 
 <div id="map"></div>
@@ -72,64 +38,36 @@ button:hover{
 
 let map = L.map('map').setView([11.55,104.92], 6);
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
-.addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(map);
 
 let marker;
 
-// ✅ FIXED GLOBAL FUNCTION
-window.scan = async function () {
+async function scan() {
 
   let file = document.getElementById("img").files[0];
-
-  if (!file) {
-    alert("⚠️ Please select an image first");
-    return;
-  }
-
-  document.getElementById("out").innerText = "⏳ Scanning...";
 
   let form = new FormData();
   form.append("image", file);
 
-  try {
+  let res = await fetch("/upload", {
+    method: "POST",
+    body: form
+  });
 
-    let res = await fetch("/upload", {
-      method: "POST",
-      body: form
-    });
+  let data = await res.json();
 
-    if (!res.ok) {
-      throw new Error("Server Error: " + res.status);
-    }
+  document.getElementById("out").innerText = JSON.stringify(data, null, 2);
 
-    let data = await res.json();
+  if (data.lat && data.lng) {
 
-    console.log(data);
+    map.setView([data.lat, data.lng], 16);
 
-    document.getElementById("out")
-      .innerText = JSON.stringify(data, null, 2);
+    if (marker) map.removeLayer(marker);
 
-    // 📍 Show map location
-    if (data.lat && data.lng) {
-
-      map.setView([data.lat, data.lng], 15);
-
-      if (marker) map.removeLayer(marker);
-
-      marker = L.marker([data.lat, data.lng])
-        .addTo(map)
-        .bindPopup(`
-          <b>${data.place || "Unknown"}</b><br>
-          ${data.address || ""}
-        `)
-        .openPopup();
-    }
-
-  } catch (err) {
-    console.error(err);
-    document.getElementById("out").innerText =
-      "❌ Error: " + err.message;
+    marker = L.marker([data.lat, data.lng])
+      .addTo(map)
+      .bindPopup("📍 " + data.place)
+      .openPopup();
   }
 }
 
