@@ -12,28 +12,26 @@ app.use(express.static("public"));
 
 const upload = multer({ dest: "uploads/" });
 
-const API_KEY = process.env.GOOGLE_API_KEY;
-
-// 🌍 Google Places API
+// 🌍 OpenStreetMap (FREE)
 async function searchPlace(query) {
   try {
-    const url = "https://maps.googleapis.com/maps/api/place/textsearch/json";
+    const url = "https://nominatim.openstreetmap.org/search";
 
     const res = await axios.get(url, {
       params: {
-        query,
-        key: API_KEY
+        q: query,
+        format: "json",
+        limit: 1
       }
     });
 
-    if (res.data.results.length > 0) {
-      let p = res.data.results[0];
+    if (res.data && res.data.length > 0) {
+      let p = res.data[0];
 
       return {
-        place: p.name,
-        address: p.formatted_address,
-        lat: p.geometry.location.lat,
-        lng: p.geometry.location.lng
+        name: p.display_name,
+        lat: p.lat,
+        lng: p.lon
       };
     }
 
@@ -44,7 +42,19 @@ async function searchPlace(query) {
   }
 }
 
-// 🚀 UPLOAD API (SMART SUPPORT SEARCH)
+// 🧠 SMART QUERY ENGINE
+function smartQuery(text) {
+  const t = text.toLowerCase();
+
+  if (t.includes("mall")) return "shopping mall Phnom Penh";
+  if (t.includes("restaurant")) return "restaurant Phnom Penh";
+  if (t.includes("hotel")) return "hotel Phnom Penh";
+  if (t.includes("street")) return "famous street Phnom Penh";
+
+  return text || "famous landmark Phnom Penh";
+}
+
+// 🚀 UPLOAD + AUTO PIN
 app.post("/upload", upload.single("image"), (req, res) => {
 
   const imgPath = path.join(__dirname, req.file.path);
@@ -52,41 +62,14 @@ app.post("/upload", upload.single("image"), (req, res) => {
   exec(`python3 ai/detect.py ${imgPath}`, { timeout: 60000 }, async (err, stdout) => {
 
     if (err) {
-      return res.status(500).json({
-        error: "Python failed",
-        details: err.message
-      });
+      return res.json({ error: err.message });
     }
 
-    let ai;
-
-    try {
-      ai = JSON.parse(stdout);
-    } catch (e) {
-      return res.status(500).json({
-        error: "Invalid Python output"
-      });
-    }
+    let ai = JSON.parse(stdout);
 
     let text = (ai.text || []).join(" ").trim();
 
-    // 🧠 SUPPORT SEARCH MODE
-    let query = text;
-
-    if (!query) {
-      query = "famous place in Phnom Penh";
-    }
-
-    // 🧠 SMART DETECTION RULES
-    const lower = query.toLowerCase();
-
-    if (lower.includes("mall")) {
-      query = "shopping mall";
-    } else if (lower.includes("restaurant")) {
-      query = "restaurant";
-    } else if (lower.includes("hotel")) {
-      query = "hotel";
-    }
+    let query = smartQuery(text);
 
     let place = await searchPlace(query);
 
@@ -94,10 +77,11 @@ app.post("/upload", upload.single("image"), (req, res) => {
       return res.json({
         ai_text: ai.text,
         search_query: query,
-        place: place.place,
-        address: place.address,
+        place: place.name,
         lat: place.lat,
-        lng: place.lng
+        lng: place.lng,
+        auto_pin: true,
+        provider: "OpenStreetMap FREE"
       });
     }
 
