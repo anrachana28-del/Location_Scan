@@ -10,31 +10,23 @@ const app = express();
 app.use(cors());
 app.use(express.static("public"));
 
-const upload = multer({ dest:"uploads/" });
+const upload = multer({ dest: "uploads/" });
 
 const API_KEY = process.env.GOOGLE_API_KEY;
 
-// check API key
-if(!API_KEY){
-  console.log("WARNING: Missing GOOGLE_API_KEY");
-}
-
 // 🌍 Google Places
-async function searchPlace(query){
-
-  try{
-
+async function searchPlace(query) {
+  try {
     const url = "https://maps.googleapis.com/maps/api/place/textsearch/json";
 
-    const res = await axios.get(url,{
-      params:{
+    const res = await axios.get(url, {
+      params: {
         query,
         key: API_KEY
       }
     });
 
-    if(res.data.results.length > 0){
-
+    if (res.data.results.length > 0) {
       let p = res.data.results[0];
 
       return {
@@ -47,38 +39,52 @@ async function searchPlace(query){
 
     return null;
 
-  }catch(e){
+  } catch (e) {
     return null;
   }
 }
 
 // 🚀 Upload API
-app.post("/upload", upload.single("image"), (req,res)=>{
+app.post("/upload", upload.single("image"), (req, res) => {
+
+  if (!req.file) {
+    return res.status(400).json({ error: "No file uploaded" });
+  }
 
   const imgPath = path.join(__dirname, req.file.path);
 
-  exec(`python3 ai/detect.py ${imgPath}`, async (err,stdout)=>{
+  // ⚡ FAST + STABLE EXEC
+  exec(`python3 ai/detect.py ${imgPath}`, { timeout: 30000 }, async (err, stdout) => {
 
-    if(err){
-      return res.json({ error: err.message });
-    }
-
-    let ai;
-    try {
-      ai = JSON.parse(stdout);
-    } catch (e) {
-      return res.json({
-        error: "Python output error",
-        raw: stdout
+    if (err) {
+      return res.status(500).json({
+        error: "Python error",
+        details: err.message
       });
     }
 
-    let query = (ai.text || []).join(" ");
+    let ai;
+
+    try {
+      ai = JSON.parse(stdout);
+    } catch (e) {
+      return res.status(500).json({
+        error: "Invalid Python output"
+      });
+    }
+
+    let query = (ai.text || []).join(" ").trim();
+
+    if (!query) {
+      return res.json({
+        ai_text: [],
+        message: "No text detected"
+      });
+    }
 
     let place = await searchPlace(query);
 
-    if(place){
-
+    if (place) {
       return res.json({
         ai_text: ai.text,
         place: place.place,
@@ -86,19 +92,17 @@ app.post("/upload", upload.single("image"), (req,res)=>{
         lat: place.lat,
         lng: place.lng
       });
-
-    }else{
-
-      return res.json({
-        ai_text: ai.text,
-        message:"No location found"
-      });
     }
+
+    return res.json({
+      ai_text: ai.text,
+      message: "No location found"
+    });
   });
 });
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT,()=>{
+app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
