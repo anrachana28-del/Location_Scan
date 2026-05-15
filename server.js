@@ -12,10 +12,14 @@ app.use(express.static("public"));
 
 const upload = multer({ dest:"uploads/" });
 
-// 🔑 GOOGLE API KEY (put in env for production)
 const API_KEY = process.env.GOOGLE_API_KEY;
 
-// 🌍 Google Places Search
+// check API key
+if(!API_KEY){
+  console.log("WARNING: Missing GOOGLE_API_KEY");
+}
+
+// 🌍 Google Places
 async function searchPlace(query){
 
   try{
@@ -53,21 +57,29 @@ app.post("/upload", upload.single("image"), (req,res)=>{
 
   const imgPath = path.join(__dirname, req.file.path);
 
-  exec(`python ai/detect.py ${imgPath}`, async (err,stdout)=>{
+  exec(`python3 ai/detect.py ${imgPath}`, async (err,stdout)=>{
 
     if(err){
-      return res.json({error:err.message});
+      return res.json({ error: err.message });
     }
 
-    let ai = JSON.parse(stdout);
+    let ai;
+    try {
+      ai = JSON.parse(stdout);
+    } catch (e) {
+      return res.json({
+        error: "Python output error",
+        raw: stdout
+      });
+    }
 
-    let query = ai.text.join(" ");
+    let query = (ai.text || []).join(" ");
 
     let place = await searchPlace(query);
 
     if(place){
 
-      res.json({
+      return res.json({
         ai_text: ai.text,
         place: place.place,
         address: place.address,
@@ -77,7 +89,7 @@ app.post("/upload", upload.single("image"), (req,res)=>{
 
     }else{
 
-      res.json({
+      return res.json({
         ai_text: ai.text,
         message:"No location found"
       });
