@@ -4,8 +4,7 @@
 <meta charset="UTF-8">
 <title>AI Map Lens BEST</title>
 
-<link rel="stylesheet"
-href="https://unpkg.com/leaflet/dist/leaflet.css"/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
 body{
@@ -39,6 +38,13 @@ button{
   border:none;
   border-radius:10px;
   cursor:pointer;
+  background:#38bdf8;
+  color:black;
+  font-weight:bold;
+}
+
+button:hover{
+  background:#0ea5e9;
 }
 </style>
 </head>
@@ -53,7 +59,7 @@ button{
 <button onclick="scan()">Scan Image</button>
 
 <div class="card">
-<pre id="out">Result...</pre>
+<pre id="out">Result will show here...</pre>
 </div>
 
 <div id="map"></div>
@@ -71,38 +77,62 @@ L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png')
 
 let marker;
 
-async function scan(){
+// ✅ FIXED GLOBAL FUNCTION
+window.scan = async function () {
 
   let file = document.getElementById("img").files[0];
+
+  if (!file) {
+    alert("⚠️ Please select an image first");
+    return;
+  }
+
+  document.getElementById("out").innerText = "⏳ Scanning...";
 
   let form = new FormData();
   form.append("image", file);
 
-  let res = await fetch("/upload",{
-    method:"POST",
-    body:form
-  });
+  try {
 
-  let data = await res.json();
+    let res = await fetch("/upload", {
+      method: "POST",
+      body: form
+    });
 
-  document.getElementById("out")
-  .innerText = JSON.stringify(data,null,2);
+    if (!res.ok) {
+      throw new Error("Server Error: " + res.status);
+    }
 
-  if(data.lat && data.lng){
+    let data = await res.json();
 
-    map.setView([data.lat,data.lng],15);
+    console.log(data);
 
-    if(marker) map.removeLayer(marker);
+    document.getElementById("out")
+      .innerText = JSON.stringify(data, null, 2);
 
-    marker = L.marker([data.lat,data.lng])
-    .addTo(map)
-    .bindPopup(`
-      <b>${data.place}</b><br>
-      ${data.address}
-    `)
-    .openPopup();
+    // 📍 Show map location
+    if (data.lat && data.lng) {
+
+      map.setView([data.lat, data.lng], 15);
+
+      if (marker) map.removeLayer(marker);
+
+      marker = L.marker([data.lat, data.lng])
+        .addTo(map)
+        .bindPopup(`
+          <b>${data.place || "Unknown"}</b><br>
+          ${data.address || ""}
+        `)
+        .openPopup();
+    }
+
+  } catch (err) {
+    console.error(err);
+    document.getElementById("out").innerText =
+      "❌ Error: " + err.message;
   }
 }
+
 </script>
 
 </body>
