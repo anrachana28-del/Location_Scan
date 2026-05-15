@@ -1,35 +1,61 @@
 import sys
 import json
-from PIL import Image
+import os
+
+# OCR engine
 import easyocr
 
-# 📌 Image path from Node.js
-image_path = sys.argv[1]
+# Optional image check
+from PIL import Image
 
-# 🧠 Load OCR model
-reader = easyocr.Reader(['en'])
+# Disable GPU (important for Render)
+os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-def detect_text(path):
+def main():
 
     try:
-        result = reader.readtext(path)
+        # get image path from Node.js
+        image_path = sys.argv[1]
 
+        # check file exists
+        if not os.path.exists(image_path):
+            print(json.dumps({
+                "error": "Image not found",
+                "text": []
+            }))
+            return
+
+        # init OCR
+        reader = easyocr.Reader(['en'], gpu=False)
+
+        # read image
+        result = reader.readtext(image_path)
+
+        # extract text only
         texts = []
 
         for item in result:
-            texts.append(item[1])
+            if len(item) >= 2:
+                texts.append(str(item[1]))
 
-        return texts
+        # clean empty results
+        texts = [t for t in texts if t.strip() != ""]
+
+        # final output
+        output = {
+            "text": texts if texts else [],
+            "count": len(texts)
+        }
+
+        print(json.dumps(output))
 
     except Exception as e:
-        return []
 
-# 🚀 Run detection
-texts = detect_text(image_path)
+        print(json.dumps({
+            "error": str(e),
+            "text": []
+        }))
 
-# 🧾 Output JSON (IMPORTANT for Node.js)
-output = {
-    "text": texts
-}
 
-print(json.dumps(output))
+if __name__ == "__main__":
+    main()
