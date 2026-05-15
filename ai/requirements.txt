@@ -1,4 +1,4 @@
+pytesseract
 pillow
 numpy
 opencv-python-headless
-easyocr
