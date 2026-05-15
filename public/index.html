@@ -2,16 +2,16 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>AI Auto Lens FREE</title>
+<title>AI Lens FREE</title>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 
 <style>
-body { font-family: Arial; background:#0f172a; color:white; }
+body { margin:0; font-family:Arial; background:#0f172a; color:white; }
 .container { max-width:900px; margin:auto; padding:20px; }
 #map { height:500px; margin-top:10px; border-radius:10px; }
 .card { background:#1e293b; padding:10px; border-radius:10px; }
-button { padding:10px; border-radius:8px; }
+button { padding:10px; border-radius:8px; cursor:pointer; }
 </style>
 </head>
 
@@ -19,10 +19,10 @@ button { padding:10px; border-radius:8px; }
 
 <div class="container">
 
-<h2>📍 AI AUTO PIN LENS (FREE)</h2>
+<h2>📍 AI AUTO LENS (FREE VERSION)</h2>
 
 <input type="file" id="img">
-<button onclick="scan()">Scan Image</button>
+<button onclick="scan()">Scan</button>
 
 <div class="card">
 <pre id="out">Result...</pre>
@@ -56,7 +56,8 @@ async function scan() {
 
   let data = await res.json();
 
-  document.getElementById("out").innerText = JSON.stringify(data, null, 2);
+  document.getElementById("out").innerText =
+    JSON.stringify(data, null, 2);
 
   if (data.lat && data.lng) {
 
@@ -66,7 +67,7 @@ async function scan() {
 
     marker = L.marker([data.lat, data.lng])
       .addTo(map)
-      .bindPopup("📍 " + data.place)
+      .bindPopup(data.place)
       .openPopup();
   }
 }
