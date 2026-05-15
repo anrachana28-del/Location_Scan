@@ -1,4 +1,4 @@
 pillow
-easyocr
 numpy
-opencv-python
+opencv-python-headless
+easyocr
